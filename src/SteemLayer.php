@@ -15,9 +15,9 @@ class SteemLayer {
 
     private $debug = false;
     // replace with your own seed / rpc node URL
-    private $webservice_url = 'steemd.steemitdev.com';    
+    private $webservice_path = 'steemd.steemitdev.com';    
     private $throw_exception = false;
-    private $scheme = 'https://';
+    private $scheme = 'https';
 
     public function __construct($config = array())
     {
@@ -26,7 +26,14 @@ class SteemLayer {
             $this->debug = $config['debug'];
         }
         if (array_key_exists('webservice_url', $config)) {
-            $this->webservice_url = $config['webservice_url'];
+            list($scheme, $path) = explode('://', $config['webservice_url'], 2);
+            if($path == null){
+               $this->scheme = 'https';
+               $this->webservice_url = $config['webservice_url'];
+            }else{
+               $this->scheme = $scheme;
+               $this->webservice_path = $path;
+            }
         }
         if (array_key_exists('throw_exception', $config)) {
             $this->throw_exception = $config['throw_exception'];
@@ -41,6 +48,8 @@ class SteemLayer {
         }
         else if($transport == 'websocket'){
 	        $response = $this->websocket($request);
+        } else {
+            throw new Exception("Unknown transport {$transport}");
         }
         if (array_key_exists('error', $response)) {
             if ($this->throw_exception) {
@@ -72,8 +81,8 @@ class SteemLayer {
 
     public function curl($data) {
         $ch = curl_init();
-        $this->scheme = 'https://';
-        curl_setopt($ch, CURLOPT_URL, $this->scheme.$this->webservice_url);
+        $this->scheme = 'https';
+        curl_setopt($ch, CURLOPT_URL, $this->scheme.'://'.$this->webservice_path);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
         $result = curl_exec($ch);
@@ -90,8 +99,8 @@ class SteemLayer {
     }
     
     public function websocket($data){
-	    $this->scheme = 'wss://';
-	    $client = new Client($this->scheme.$this->webservice_url);
+	    $this->scheme = 'wss';
+	    $client = new Client($this->scheme.'://'.$this->webservice_path);
 	    $client->send($data);
 	    $result = $client->receive();
 	    if ($this->debug) {
